@@ -1,2 +1,5 @@
-venv
-__pycache__
+Model_Pipeline.pkl
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

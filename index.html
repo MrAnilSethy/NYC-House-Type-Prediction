@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Room Type Predictor — NYC Airbnb</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="grid-overlay" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+      <rect x="4" y="18" width="6" height="18" fill="var(--line-blue)"/>
+      <rect x="12" y="10" width="6" height="26" fill="var(--line-orange)"/>
+      <rect x="20" y="4" width="6" height="32" fill="var(--taxi)"/>
+      <rect x="28" y="14" width="6" height="22" fill="var(--line-purple)"/>
+    </svg>
+    <div class="brand-text">
+      <span class="brand-title">Room&nbsp;Type&nbsp;Predictor</span>
+      <span class="brand-sub">NYC Airbnb &middot; classification model</span>
+    </div>
+  </div>
+
+  <div class="conn-block">
+    <label for="apiUrl" class="conn-label">Model endpoint</label>
+    <div class="conn-input-row">
+      <input type="text" id="apiUrl" class="conn-input" spellcheck="false" value="http://127.0.0.1:8000" placeholder="http://127.0.0.1:8000">
+      <button id="checkConn" class="conn-btn" type="button">Ping</button>
+    </div>
+    <div class="conn-status" id="connStatus">
+      <span class="dot" id="connDot"></span>
+      <span id="connText">Not checked</span>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ============ FORM PANEL ============ -->
+  <section class="panel form-panel" aria-labelledby="formHeading">
+    <div class="panel-head">
+      <h1 id="formHeading">Describe the listing</h1>
+      <p class="panel-desc">Fill in the details below the way a host would list them. The model reads these ten fields and infers whether the space is an entire place, a private room, or a shared room.</p>
+    </div>
+
+    <form id="predictForm" novalidate>
+
+      <fieldset class="field-group">
+        <legend>Location</legend>
+
+        <div class="field-row two-col">
+          <div class="field">
+            <label for="neighbourhood_group">Borough</label>
+            <select id="neighbourhood_group" name="neighbourhood_group" required></select>
+          </div>
+          <div class="field">
+            <label for="neighbourhood">Neighbourhood</label>
+            <select id="neighbourhood" name="neighbourhood" required disabled>
+              <option value="">Choose a borough first</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-row two-col">
+          <div class="field">
+            <label for="latitude">Latitude</label>
+            <input type="number" id="latitude" name="latitude" step="0.000001" min="-90" max="90" placeholder="40.712800" required>
+            <span class="hint">−90 to 90</span>
+          </div>
+          <div class="field">
+            <label for="longitude">Longitude</label>
+            <input type="number" id="longitude" name="longitude" step="0.000001" min="-180" max="180" placeholder="-74.006000" required>
+            <span class="hint">−180 to 180</span>
+          </div>
+        </div>
+
+        <button type="button" id="pickOnMap" class="ghost-btn">Drop pin from typical borough center</button>
+      </fieldset>
+
+      <fieldset class="field-group">
+        <legend>Pricing &amp; stay terms</legend>
+
+        <div class="field">
+          <label for="price">Price per night (USD)</label>
+          <input type="number" id="price" name="price" min="1" step="1" placeholder="150" required>
+        </div>
+
+        <div class="field-row two-col">
+          <div class="field">
+            <label for="minimum_nights">Minimum nights</label>
+            <input type="number" id="minimum_nights" name="minimum_nights" min="1" max="365" step="1" placeholder="3" required>
+          </div>
+          <div class="field">
+            <label for="availability_365">Available days / year</label>
+            <input type="number" id="availability_365" name="availability_365" min="0" max="365" step="1" placeholder="180" required>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="field-group">
+        <legend>Reviews &amp; host activity</legend>
+
+        <div class="field-row two-col">
+          <div class="field">
+            <label for="number_of_reviews">Total reviews</label>
+            <input type="number" id="number_of_reviews" name="number_of_reviews" min="0" step="1" placeholder="24" required>
+          </div>
+          <div class="field">
+            <label for="reviews_per_month">Reviews per month</label>
+            <input type="number" id="reviews_per_month" name="reviews_per_month" min="0" step="0.01" placeholder="1.2" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="calculated_host_listings_count">Listings by this host</label>
+          <input type="number" id="calculated_host_listings_count" name="calculated_host_listings_count" min="0" step="1" placeholder="1" required>
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
+        <button type="submit" id="submitBtn" class="primary-btn">
+          <span class="btn-label">Run prediction</span>
+          <span class="btn-spinner" hidden></span>
+        </button>
+        <button type="button" id="fillSample" class="ghost-btn">Fill sample listing</button>
+        <button type="reset" class="text-btn">Clear</button>
+      </div>
+
+      <p class="form-error" id="formError" role="alert" hidden></p>
+    </form>
+  </section>
+
+  <!-- ============ RESULT PANEL ============ -->
+  <aside class="panel result-panel" aria-labelledby="resultHeading">
+    <div class="panel-head">
+      <h2 id="resultHeading">Reading the map</h2>
+      <p class="panel-desc">The pin tracks the coordinates on the left. Boroughs are tinted by their historic subway line colors.</p>
+    </div>
+
+    <div class="map-wrap">
+      <svg id="boroughMap" viewBox="0 0 360 400" role="img" aria-label="Simplified map of New York City boroughs">
+        <!-- Bronx -->
+        <path d="M150 20 L240 15 L260 90 L220 130 L160 120 L140 70 Z" class="borough bronx" data-borough="Bronx"></path>
+        <!-- Manhattan -->
+        <path d="M170 125 L205 118 L215 260 L185 275 L165 240 Z" class="borough manhattan" data-borough="Manhattan"></path>
+        <!-- Queens -->
+        <path d="M225 95 L330 110 L340 230 L250 255 L215 200 L220 135 Z" class="borough queens" data-borough="Queens"></path>
+        <!-- Brooklyn -->
+        <path d="M180 245 L245 225 L280 300 L235 360 L165 345 L160 280 Z" class="borough brooklyn" data-borough="Brooklyn"></path>
+        <!-- Staten Island -->
+        <path d="M45 270 L105 250 L130 320 L95 380 L45 365 L30 310 Z" class="borough staten" data-borough="Staten Island"></path>
+
+        <text x="196" y="70" class="borough-label">Bronx</text>
+        <text x="150" y="195" class="borough-label" transform="rotate(-4 150,195)">Manhattan</text>
+        <text x="278" y="175" class="borough-label">Queens</text>
+        <text x="205" y="295" class="borough-label">Brooklyn</text>
+        <text x="80" y="315" class="borough-label">Staten Is.</text>
+
+        <g id="pinGroup" opacity="0">
+          <circle id="pinPulse" cx="0" cy="0" r="14" class="pin-pulse"></circle>
+          <circle id="pinDot" cx="0" cy="0" r="6" class="pin-dot"></circle>
+        </g>
+      </svg>
+      <div class="map-coords" id="mapCoords">Enter coordinates to place the pin</div>
+    </div>
+
+    <div class="result-card" id="resultCard" data-state="idle">
+      <div class="result-idle" id="resultIdle">
+        <p>No prediction yet. Fill the form and run the model to see the room type, confidence, and how the vote split across the three classes.</p>
+      </div>
+
+      <div class="result-content" id="resultContent" hidden>
+        <div class="result-badge" id="resultBadge">
+          <span class="badge-label">Predicted room type</span>
+          <span class="badge-value" id="badgeValue">—</span>
+        </div>
+
+        <div class="prob-list" id="probList"></div>
+      </div>
+    </div>
+
+    <div class="history-block">
+      <div class="history-head">
+        <h3>Recent runs</h3>
+        <button type="button" id="clearHistory" class="text-btn small">Clear</button>
+      </div>
+      <ul class="history-list" id="historyList">
+        <li class="history-empty">Predictions you run will appear here.</li>
+      </ul>
+    </div>
+  </aside>
+
+</main>
+
+<footer class="footer">
+  <span>Random forest pipeline served over a local FastAPI endpoint &middot; predictions are estimates, not listing facts.</span>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

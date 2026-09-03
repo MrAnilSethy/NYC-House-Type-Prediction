@@ -42,7 +42,7 @@ class Features(BaseModel):
 
 @app.get('/')
 def greet():
-    return "Hello World!"
+    return "Hello Welcome!"
 
 @app.post('/predict')
 def predict(features:Features):
