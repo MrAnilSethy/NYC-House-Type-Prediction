@@ -181,7 +181,7 @@
      Persisted API URL
      ========================================================= */
   const savedUrl = localStorage.getItem(STORAGE_KEYS.apiUrl);
-  if (savedUrl) apiUrlInput.value = savedUrl;
+  apiUrlInput.value = savedUrl || "https://nyc-house-type-prediction.onrender.com";
   apiUrlInput.addEventListener("change", () => {
     localStorage.setItem(STORAGE_KEYS.apiUrl, apiUrlInput.value.trim());
   });
